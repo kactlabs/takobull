@@ -247,30 +247,24 @@ async fn handle_status() -> Result<(), Box<dyn std::error::Error>> {
             .unwrap_or("unknown");
         println!("Model: {}", model);
         
-        // API keys status
-        let providers = vec![
-            "openrouter",
-            "anthropic",
-            "openai",
-            "gemini",
-            "zhipu",
-            "groq",
-        ];
+        // Get selected provider
+        let selected_provider = config["agents"]["defaults"]["provider"]
+            .as_str()
+            .unwrap_or("openai");
         
-        for provider in providers {
-            let api_key = config["providers"][provider]["api_key"].as_str();
-            let status = if api_key.is_some() { "✓" } else { "not set" };
-            let provider_name = match provider {
-                "openrouter" => "OpenRouter API",
-                "anthropic" => "Anthropic API",
-                "openai" => "OpenAI API",
-                "gemini" => "Gemini API",
-                "zhipu" => "Zhipu API",
-                "groq" => "Groq API",
-                _ => provider,
-            };
-            println!("{}: {}", provider_name, status);
-        }
+        // API key status for selected provider only
+        let api_key = config["providers"][selected_provider]["api_key"].as_str();
+        let status = if api_key.is_some() { "✓" } else { "not set" };
+        let provider_name = match selected_provider {
+            "openrouter" => "OpenRouter API",
+            "anthropic" => "Anthropic API",
+            "openai" => "OpenAI API",
+            "gemini" => "Gemini API",
+            "zhipu" => "Zhipu API",
+            "groq" => "Groq API",
+            _ => selected_provider,
+        };
+        println!("Provider: {} ({})", provider_name, status);
     }
     
     println!("------");
