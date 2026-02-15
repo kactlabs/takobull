@@ -22,6 +22,7 @@ mod tests {
     }
 
     /// Strategy for generating valid ChannelConfig values
+    #[allow(dead_code)]
     fn channel_config_strategy() -> impl Strategy<Value = ChannelConfig> {
         (any::<bool>(), ".*")
             .prop_map(|(enabled, token)| ChannelConfig {
@@ -35,6 +36,7 @@ mod tests {
     }
 
     /// Strategy for generating valid ProviderConfig values
+    #[allow(dead_code)]
     fn provider_config_strategy() -> impl Strategy<Value = ProviderConfig> {
         (any::<bool>(), ".*", ".*")
             .prop_map(|(has_key, key, model)| ProviderConfig {

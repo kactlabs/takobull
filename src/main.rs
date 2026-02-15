@@ -218,9 +218,63 @@ async fn handle_gateway() -> Result<(), Box<dyn std::error::Error>> {
 
 async fn handle_status() -> Result<(), Box<dyn std::error::Error>> {
     info!("Showing status");
-    println!("TakoBull v{}", env!("CARGO_PKG_VERSION"));
-    println!("Status: OK");
-    // TODO: Show actual status information
+    
+    let home = std::env::var("HOME")?;
+    let config_path = format!("{}/.takobull/config.yaml", home);
+    let workspace = format!("{}/.takobull/workspace", home);
+    
+    println!("🦞 takobull Status");
+    println!("Version: v{}", env!("CARGO_PKG_VERSION"));
+    
+    // Config status
+    let config_exists = std::path::Path::new(&config_path).exists();
+    let config_status = if config_exists { "✓" } else { "✗" };
+    println!("Config: {} {}", config_path, config_status);
+    
+    // Workspace status
+    let workspace_exists = std::path::Path::new(&workspace).exists();
+    let workspace_status = if workspace_exists { "✓" } else { "✗" };
+    println!("Workspace: {} {}", workspace, workspace_status);
+    
+    // Load config if it exists
+    if config_exists {
+        let config_content = std::fs::read_to_string(&config_path)?;
+        let config: serde_yaml::Value = serde_yaml::from_str(&config_content)?;
+        
+        // Model
+        let model = config["agents"]["defaults"]["model"]
+            .as_str()
+            .unwrap_or("unknown");
+        println!("Model: {}", model);
+        
+        // API keys status
+        let providers = vec![
+            "openrouter",
+            "anthropic",
+            "openai",
+            "gemini",
+            "zhipu",
+            "groq",
+        ];
+        
+        for provider in providers {
+            let api_key = config["providers"][provider]["api_key"].as_str();
+            let status = if api_key.is_some() { "✓" } else { "not set" };
+            let provider_name = match provider {
+                "openrouter" => "OpenRouter API",
+                "anthropic" => "Anthropic API",
+                "openai" => "OpenAI API",
+                "gemini" => "Gemini API",
+                "zhipu" => "Zhipu API",
+                "groq" => "Groq API",
+                _ => provider,
+            };
+            println!("{}: {}", provider_name, status);
+        }
+    }
+    
+    println!("------");
+    
     Ok(())
 }
 

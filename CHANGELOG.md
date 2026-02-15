@@ -19,6 +19,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [0.2.2] - 2026-02-15
+
+### Fixed
+- All 47 unit and property-based tests passing
+- Agent loop verified working correctly with conversation history and tool result feedback
+
 ## [0.2.1] - 2026-02-15
 
 ### Fixed
@@ -27,6 +33,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Implemented tool result feedback to LLM for proper task completion
   - Added `chat_with_tools_and_history` method to LLM client for all providers (OpenRouter, OpenAI, Anthropic)
   - Agent now properly terminates when LLM responds without tool calls
+  - Fixed OpenAI message format to include tool_calls in assistant messages with proper tool_call_id references
+
+### Changed
+- **Write File Tool** - Enhanced to display absolute file paths alongside relative paths for better user feedback
+- **Status Command** - Updated to match picoclaw's output format with detailed configuration and API key status checks
 
 ## [0.2.0] - 2026-02-15
 
