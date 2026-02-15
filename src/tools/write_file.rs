@@ -79,9 +79,10 @@ impl Tool for WriteFileTool {
         // Write file
         match std::fs::write(&full_path, content) {
             Ok(_) => {
+                let abs_path = full_path.canonicalize().unwrap_or(full_path.clone());
                 info!("File written: {}", path);
-                ToolResult::success(format!("File written successfully: {}", path))
-                    .with_user_content(format!("✓ Created file: {}", path))
+                ToolResult::success(format!("File written successfully: {} ({})", path, abs_path.display()))
+                    .with_user_content(format!("✓ Created file: {} ({})", path, abs_path.display()))
             }
             Err(e) => ToolResult::error(format!("Failed to write file: {}", e)),
         }

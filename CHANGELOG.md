@@ -19,6 +19,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [0.2.1] - 2026-02-15
+
+### Fixed
+- **Agent Loop Infinite Loop Bug** - Fixed agent executor not maintaining conversation history or feeding tool results back to LLM, causing infinite tool call loops
+  - Added conversation history tracking across iterations
+  - Implemented tool result feedback to LLM for proper task completion
+  - Added `chat_with_tools_and_history` method to LLM client for all providers (OpenRouter, OpenAI, Anthropic)
+  - Agent now properly terminates when LLM responds without tool calls
+
 ## [0.2.0] - 2026-02-15
 
 ### Added
