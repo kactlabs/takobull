@@ -1,0 +1,8 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc a9b5c5edbec7e17ab823aad87d8543d91c0ec81ae92f3620068960f535e7a0f5 # shrinks to config = Config { agent: AgentConfig { max_context_size: 1, timeout_ms: 100, memory_limit_mb: 1 }, channels: ChannelsConfig { telegram: None, discord: None }, llm: LlmConfig { default_provider: "", providers: {"openrouter": ProviderConfig { api_key: Some("test_key"), model: Some("test_model") }} }, tools: ToolsConfig { web_search: None, filesystem: None, shell: None }, auth: AuthConfig { oauth_enabled: true }, logging: LoggingConfig { level: "info", format: "json" } }
+cc 4dbdefa26a68eb2a751daf1b1641f1a7c774f062bf645ea4fbd7742d54ab2890 # shrinks to config = Config { agent: AgentConfig { max_context_size: 1, timeout_ms: 100, memory_limit_mb: 1 }, channels: ChannelsConfig { telegram: None, discord: None }, llm: LlmConfig { default_provider: "", providers: {"openrouter": ProviderConfig { api_key: Some("test_key"), model: Some("test_model") }} }, tools: ToolsConfig { web_search: None, filesystem: None, shell: None }, auth: AuthConfig { oauth_enabled: true }, logging: LoggingConfig { level: "info", format: "json" } }

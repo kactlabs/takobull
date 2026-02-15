@@ -1,0 +1,13 @@
+# Rust build artifacts
+target/
+Cargo.lock
+
+# TacoBot specific
+.tacobot/
+config.yaml
+
+# Secrets & Config
+.env
+
+# OS
+.DS_Store

@@ -1,0 +1,149 @@
+[package]
+name = "picoclaw"
+version = "0.2.0"
+edition = "2021"
+description = "Ultra-lightweight personal AI Assistant for embedded systems - Rust port"
+license = "MIT"
+repository = "https://github.com/kactlabs/takobull"
+
+[dependencies]
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+tokio-util = "0.7"
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+toml = "0.8"
+
+# HTTP client
+reqwest = { version = "0.11", features = ["json", "stream"] }
+
+# Logging and tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# CLI argument parsing
+clap = { version = "4.4", features = ["derive"] }
+
+# Cryptography
+sha2 = "0.10"
+base64 = "0.21"
+rand = "0.8"
+
+# Time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# Utilities
+uuid = { version = "1.6", features = ["v4", "serde"] }
+futures = "0.3"
+async-trait = "0.1"
+parking_lot = "0.12"
+num_cpus = "1.16"
+
+# Hardware interfaces (optional, Linux-specific)
+i2cdev = { version = "0.5", optional = true }
+spidev = { version = "0.5", optional = true }
+
+# Environment variables
+dotenv = "0.15"
+
+# Regex for path validation
+regex = "1.10"
+
+# HTTP server for webhooks
+axum = { version = "0.7", optional = true }
+tower = { version = "0.4", optional = true }
+
+# Cron scheduling
+cron = "0.12"
+
+# Web scraping
+scraper = { version = "0.17", optional = true }
+
+[dev-dependencies]
+proptest = "1.4"
+tokio-test = "0.4"
+mockall = "0.12"
+tempfile = "3.8"
+
+[features]
+default = ["channels-telegram", "channels-discord", "providers-openrouter", "providers-claude"]
+
+# Channel integrations
+channels-telegram = []
+channels-discord = []
+channels-dingtalk = []
+channels-line = []
+channels-qq = []
+channels-whatsapp = []
+
+# LLM provider integrations
+providers-openrouter = []
+providers-claude = []
+providers-openai = []
+providers-gemini = []
+providers-zhipu = []
+providers-deepseek = []
+providers-groq = []
+
+# Tool integrations
+tools-web-search = []
+tools-filesystem = []
+tools-shell = []
+tools-web-access = ["scraper"]
+tools-hardware = ["i2cdev", "spidev"]
+tools-message = []
+tools-cron = []
+
+# Optional features
+webhooks = ["axum", "tower"]
+all-channels = [
+    "channels-telegram",
+    "channels-discord",
+    "channels-dingtalk",
+    "channels-line",
+    "channels-qq",
+    "channels-whatsapp",
+]
+all-providers = [
+    "providers-openrouter",
+    "providers-claude",
+    "providers-openai",
+    "providers-gemini",
+    "providers-zhipu",
+    "providers-deepseek",
+    "providers-groq",
+]
+all-tools = [
+    "tools-web-search",
+    "tools-filesystem",
+    "tools-shell",
+    "tools-web-access",
+    "tools-hardware",
+    "tools-message",
+    "tools-cron",
+]
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
+
+[profile.dev]
+opt-level = 0
+
+[[bin]]
+name = "takobull"
+path = "src/main.rs"
+
+[lib]
+name = "picoclaw"
+path = "src/lib.rs"
