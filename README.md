@@ -297,6 +297,10 @@ Add this to your shell profile (`~/.bashrc`, `~/.zshrc`, etc.) to make it perman
 
 PRs welcome! The codebase is intentionally small and readable. 🤗
 
+
+## Screenshots
+![1771126908925](image/README/1771126908925.png)
+
 ## 📝 License
 
 MIT License - See LICENSE file for details.
