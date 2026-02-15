@@ -11,3 +11,5 @@ config.yaml
 
 # OS
 .DS_Store
+
+pkg/
