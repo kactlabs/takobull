@@ -2,6 +2,10 @@
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::env;
+use std::fs;
+use std::path::Path;
+use crate::error::{Error, Result};
 
 #[cfg(test)]
 mod property_tests;
@@ -50,6 +54,7 @@ pub struct LlmConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProviderConfig {
     pub api_key: Option<String>,
+    pub api_base: Option<String>,
     pub model: Option<String>,
 }
 
@@ -78,6 +83,73 @@ pub struct AuthConfig {
 pub struct LoggingConfig {
     pub level: String,
     pub format: String,
+}
+
+impl Config {
+    /// Load configuration from file (YAML, JSON, or TOML)
+    pub fn from_file(path: impl AsRef<Path>) -> Result<Self> {
+        let path = path.as_ref();
+        let content = fs::read_to_string(path)
+            .map_err(|e| Error::config(format!("Failed to read config file: {}", e)))?;
+
+        let ext = path
+            .extension()
+            .and_then(|s| s.to_str())
+            .unwrap_or("yaml");
+
+        match ext {
+            "json" => serde_json::from_str(&content)
+                .map_err(|e| Error::config(format!("Invalid JSON config: {}", e))),
+            "yaml" | "yml" => serde_yaml::from_str(&content)
+                .map_err(|e| Error::config(format!("Invalid YAML config: {}", e))),
+            "toml" => toml::from_str(&content)
+                .map_err(|e| Error::config(format!("Invalid TOML config: {}", e))),
+            _ => Err(Error::config(format!(
+                "Unsupported config format: {}",
+                ext
+            ))),
+        }
+    }
+
+    /// Load configuration from workspace directory
+    pub fn from_workspace(workspace: impl AsRef<Path>) -> Result<Self> {
+        let workspace = workspace.as_ref();
+        let config_paths = [
+            workspace.join("config.yaml"),
+            workspace.join("config.yml"),
+            workspace.join("config.json"),
+            workspace.join("config.toml"),
+        ];
+
+        for path in &config_paths {
+            if path.exists() {
+                return Self::from_file(path);
+            }
+        }
+
+        Ok(Self::default())
+    }
+
+    /// Apply environment variable overrides
+    pub fn apply_env_overrides(mut self) -> Self {
+        if let Ok(val) = env::var("PICOCLAW_AGENT_MAX_CONTEXT_SIZE") {
+            if let Ok(size) = val.parse() {
+                self.agent.max_context_size = size;
+            }
+        }
+        if let Ok(val) = env::var("PICOCLAW_AGENT_TIMEOUT_MS") {
+            if let Ok(timeout) = val.parse() {
+                self.agent.timeout_ms = timeout;
+            }
+        }
+        if let Ok(val) = env::var("PICOCLAW_LLM_DEFAULT_PROVIDER") {
+            self.llm.default_provider = val;
+        }
+        if let Ok(val) = env::var("PICOCLAW_LOGGING_LEVEL") {
+            self.logging.level = val;
+        }
+        self
+    }
 }
 
 impl Default for Config {
@@ -119,7 +191,7 @@ mod tests {
     #[test]
     fn test_invalid_json_config() {
         let invalid_json = r#"{ invalid json }"#;
-        let result: Result<Config, _> = serde_json::from_str(invalid_json);
+        let result: std::result::Result<Config, _> = serde_json::from_str(invalid_json);
         assert!(result.is_err());
     }
 
@@ -129,7 +201,7 @@ mod tests {
 agent:
   max_context_size: not_a_number
 "#;
-        let result: Result<Config, _> = serde_yaml::from_str(invalid_yaml);
+        let result: std::result::Result<Config, _> = serde_yaml::from_str(invalid_yaml);
         assert!(result.is_err());
     }
 
@@ -139,14 +211,14 @@ agent:
 [agent]
 max_context_size = "not_a_number"
 "#;
-        let result: Result<Config, _> = toml::from_str(invalid_toml);
+        let result: std::result::Result<Config, _> = toml::from_str(invalid_toml);
         assert!(result.is_err());
     }
 
     #[test]
     fn test_missing_required_fields_json() {
         let incomplete_json = r#"{ "agent": {} }"#;
-        let result: Result<Config, _> = serde_json::from_str(incomplete_json);
+        let result: std::result::Result<Config, _> = serde_json::from_str(incomplete_json);
         // This should fail because required fields are missing
         assert!(result.is_err());
     }

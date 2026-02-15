@@ -303,6 +303,41 @@ PRs welcome! The codebase is intentionally small and readable. 🤗
 
 ![1771135067924](image/README/1771135067924.png)
 
+
+### OpenAI
+```
+provider: "openai"
+model: "gpt-4.1-mini"
+
+openai:
+    api_key: "sk.."
+    api_base: "https://api.openai.com/v1"
+```
+![1771137215655](image/README/1771137215655.png)
+
+### Llama.cpp
+```
+provider: "vllm"
+model: "default"
+
+vllm:
+    api_key: "none"
+    api_base: "http://0.0.0.0:8080/"
+```
+![1771137078920](image/README/1771137078920.png)
+
+
+### Ollama
+```
+provider: "ollama"
+model: "llama2"
+
+  vllm:
+    api_key: "none"
+    api_base: "http://0.0.0.0:11434/"
+```
+![1771137144649](image/README/1771137144649.png)
+
 ## 📝 License
 
 MIT License - See LICENSE file for details.

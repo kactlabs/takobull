@@ -1,5 +1,5 @@
 ---
-inclusion: manual
+inclusion: always
 ---
 
 # Migration Task Context
@@ -17,3 +17,8 @@ When the user mentions "migration", "migraiton task", or "mg" in the first line 
 
 ## Rationale
 The `pkg` folder contains the original Go implementation of PicoClaw. When working on migration tasks, understanding the Go implementation helps ensure feature parity and correct behavior in the Rust port, but we should not modify the reference implementation.
+
+## Documentation Rule
+- **Do NOT create new .md files**
+- Use only README.md and CHANGELOG.md for any documentation changes
+- All updates should be made to existing documentation files only

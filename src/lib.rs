@@ -13,14 +13,18 @@
 
 pub mod agent;
 pub mod auth;
+pub mod bus;
 pub mod channels;
 pub mod config;
+pub mod cron;
 pub mod device;
 pub mod error;
+pub mod heartbeat;
 pub mod llm;
 pub mod logging;
 pub mod runtime;
 pub mod session;
+pub mod state;
 pub mod tools;
 
 pub use error::{Error, Result};

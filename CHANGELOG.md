@@ -8,22 +8,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Core Components Implementation** - Ported essential Go components to Rust with full feature parity
+  - Config Management: YAML/JSON/TOML loading with environment variable overrides
+  - Session Manager: Persistent session storage with atomic file operations
+  - State Manager: Tracks last active channel/chat for heartbeat notifications
+  - Agent Loop: Message processing with LLM integration and tool execution
+  - Message Bus: Pub/sub communication between components
+  - Channel Manager: Multi-channel support framework
+  - Cron Service: Scheduled task management with persistent job storage
+  - Heartbeat Service: Periodic check execution with configurable intervals
+  - Memory Manager: Long-term and daily memory with file-based persistence
+  - Runtime Integration: Unified runtime bringing all components together
 
 ### Changed
-
-### Deprecated
-
-### Removed
+- **LLM Framework**: Extended with `chat()` method supporting tool definitions
+- **Error Handling**: Comprehensive error types with context support
+- **Ollama Support**: Fixed ollama provider integration with correct endpoint routing
+  - Ollama now uses `/v1/chat/completions` endpoint (OpenAI-compatible)
+  - Fixed API base URL construction to avoid double `/v1` paths
+  - Ollama provider no longer requires API key (local LLM)
 
 ### Fixed
-- **vLLM Provider Support** - Fixed vLLM provider integration to work with llama.cpp backend
-  - Added provider-specific API base defaults (vLLM no longer gets OpenRouter default)
-  - Implemented vLLM configuration validation requiring explicit `api_base` setting
-  - Added model name normalization to strip provider prefixes (e.g., `vllm/model-name` → `model-name`)
-  - Fixed endpoint routing to use `/v1/chat/completions` for vLLM instead of `/chat/completions`
-  - Properly handle trailing slashes in API base URLs to prevent double slashes
-  - Disabled tools in agent executor to prevent unnecessary tool calls with vLLM models
-  - Rust version now achieves feature parity with Go version for vLLM provider
+- **Ollama Response Parsing**: Fixed response format to use `choices[0].message.content` path
+- **Local Provider Support**: Added ollama and vllm to list of providers that don't require API keys
 
 ### Security
 

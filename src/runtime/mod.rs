@@ -6,6 +6,8 @@
 //! - Task pool for managing concurrent operations
 //! - Runtime metrics and monitoring
 
+pub mod integration;
+
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -14,6 +16,8 @@ use tokio::task::JoinHandle;
 use tracing::{debug, error, info, warn};
 
 use crate::error::{Error, Result};
+
+pub use integration::PicoClawRuntime;
 
 /// Configuration for the async runtime
 #[derive(Debug, Clone)]

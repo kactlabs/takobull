@@ -11,10 +11,10 @@ pub struct LlmResponse {
 }
 
 pub struct LlmClient {
-    provider: String,
-    model: String,
-    api_key: String,
-    api_base: String,
+    pub provider: String,
+    pub model: String,
+    pub api_key: String,
+    pub api_base: String,
 }
 
 impl LlmClient {
@@ -28,7 +28,7 @@ impl LlmClient {
     }
 
     /// Strip provider prefix from model name (e.g., vllm/qwen-7b -> qwen-7b)
-    fn normalize_model_name(&self, model: &str) -> String {
+    pub fn normalize_model_name(&self, model: &str) -> String {
         if let Some(idx) = model.find('/') {
             let prefix = &model[..idx];
             // Strip prefix for providers that use it as a namespace
@@ -43,10 +43,10 @@ impl LlmClient {
     }
 
     /// Get the correct chat completions endpoint for the provider
-    fn get_chat_endpoint(&self) -> String {
+    pub fn get_chat_endpoint(&self) -> String {
         let base = self.api_base.trim_end_matches('/');
         match self.provider.as_str() {
-            "vllm" => format!("{}/v1/chat/completions", base),
+            "vllm" | "ollama" => format!("{}/v1/chat/completions", base),
             _ => format!("{}/chat/completions", base),
         }
     }
@@ -57,6 +57,7 @@ impl LlmClient {
             "openai" => self.chat_openai(message).await,
             "anthropic" => self.chat_anthropic(message).await,
             "vllm" => self.chat_openai(message).await, // vllm uses OpenAI-compatible API
+            "ollama" => self.chat_ollama(message).await,
             _ => Err(Error::llm_provider(format!(
                 "Unsupported provider: {}",
                 self.provider
@@ -74,6 +75,7 @@ impl LlmClient {
             "openai" => self.chat_openai_with_tools(message, tools).await,
             "anthropic" => self.chat_anthropic_with_tools(message, tools).await,
             "vllm" => self.chat_openai_with_tools(message, tools).await, // vllm uses OpenAI-compatible API
+            "ollama" => self.chat_ollama_with_tools(message, tools).await,
             _ => Err(Error::llm_provider(format!(
                 "Unsupported provider: {}",
                 self.provider
@@ -92,6 +94,7 @@ impl LlmClient {
             "openai" => self.chat_openai_with_tools_and_history(tools, history).await,
             "anthropic" => self.chat_anthropic_with_tools_and_history(tools, history).await,
             "vllm" => self.chat_openai_with_tools_and_history(tools, history).await, // vllm uses OpenAI-compatible API
+            "ollama" => self.chat_ollama_with_tools_and_history(tools, history).await,
             _ => Err(Error::llm_provider(format!(
                 "Unsupported provider: {}",
                 self.provider
@@ -681,6 +684,114 @@ impl LlmClient {
         Ok(LlmResponse {
             content,
             tool_calls,
+        })
+    }
+
+    async fn chat_ollama(&self, message: &str) -> Result<String> {
+        let client = reqwest::Client::new();
+        let url = self.get_chat_endpoint();
+        let model = self.normalize_model_name(&self.model);
+
+        let payload = json!({
+            "model": model,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": message
+                }
+            ],
+            "stream": false,
+        });
+
+        let response = client
+            .post(&url)
+            .header("Content-Type", "application/json")
+            .json(&payload)
+            .send()
+            .await
+            .map_err(|e| Error::http(format!("Request failed: {}", e)))?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let text = response.text().await.unwrap_or_default();
+            return Err(Error::llm_provider(format!(
+                "API error {}: {}",
+                status, text
+            )));
+        }
+
+        let data: serde_json::Value = response
+            .json()
+            .await
+            .map_err(|e| Error::serialization(format!("Failed to parse response: {}", e)))?;
+
+        data["choices"][0]["message"]["content"]
+            .as_str()
+            .map(|s| s.to_string())
+            .ok_or_else(|| Error::llm_provider("No content in response".to_string()))
+    }
+
+    async fn chat_ollama_with_tools(
+        &self,
+        message: &str,
+        _tools: Vec<serde_json::Value>,
+    ) -> Result<LlmResponse> {
+        // Ollama doesn't natively support tool_calls, so we just return the content
+        // without tool calls. Applications can implement tool calling via prompt engineering.
+        let content = self.chat_ollama(message).await?;
+        Ok(LlmResponse {
+            content,
+            tool_calls: Vec::new(),
+        })
+    }
+
+    async fn chat_ollama_with_tools_and_history(
+        &self,
+        _tools: Vec<serde_json::Value>,
+        history: &[serde_json::Value],
+    ) -> Result<LlmResponse> {
+        // Ollama doesn't natively support tool_calls, so we just return the content
+        // without tool calls. Applications can implement tool calling via prompt engineering.
+        let client = reqwest::Client::new();
+        let url = self.get_chat_endpoint();
+        let model = self.normalize_model_name(&self.model);
+
+        let payload = json!({
+            "model": model,
+            "messages": history,
+            "stream": false,
+        });
+
+        let response = client
+            .post(&url)
+            .header("Content-Type", "application/json")
+            .json(&payload)
+            .send()
+            .await
+            .map_err(|e| Error::http(format!("Request failed: {}", e)))?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let text = response.text().await.unwrap_or_default();
+            return Err(Error::llm_provider(format!(
+                "API error {}: {}",
+                status, text
+            )));
+        }
+
+        let data: serde_json::Value = response
+            .json()
+            .await
+            .map_err(|e| Error::serialization(format!("Failed to parse response: {}", e)))?;
+
+        let content = data["choices"][0]["message"]["content"]
+            .as_str()
+            .unwrap_or("")
+            .to_string();
+
+        Ok(LlmResponse {
+            content,
+            tool_calls: Vec::new(),
         })
     }
 }

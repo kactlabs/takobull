@@ -38,13 +38,14 @@ mod tests {
     /// Strategy for generating valid ProviderConfig values
     #[allow(dead_code)]
     fn provider_config_strategy() -> impl Strategy<Value = ProviderConfig> {
-        (any::<bool>(), ".*", ".*")
-            .prop_map(|(has_key, key, model)| ProviderConfig {
+        (any::<bool>(), ".*", ".*", ".*")
+            .prop_map(|(has_key, key, model, base)| ProviderConfig {
                 api_key: if has_key {
                     Some(key.to_string())
                 } else {
                     None
                 },
+                api_base: Some(base.to_string()),
                 model: Some(model.to_string()),
             })
     }
@@ -63,6 +64,7 @@ mod tests {
                     "openrouter".to_string(),
                     ProviderConfig {
                         api_key: Some("test_key".to_string()),
+                        api_base: Some("https://api.openrouter.ai/v1".to_string()),
                         model: Some("test_model".to_string()),
                     },
                 );

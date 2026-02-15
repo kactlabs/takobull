@@ -3,6 +3,7 @@
 use async_trait::async_trait;
 use crate::error::Result;
 use crate::agent::context::Message;
+use crate::tools::base::ToolDefinition;
 use serde::{Deserialize, Serialize};
 
 /// LLM request structure
@@ -33,6 +34,14 @@ pub struct LlmResponse {
 pub trait LlmProvider: Send + Sync {
     /// Generate a response from the LLM
     async fn generate(&self, request: LlmRequest) -> Result<LlmResponse>;
+
+    /// Chat with tools support
+    async fn chat(
+        &self,
+        messages: &[Message],
+        tools: &[ToolDefinition],
+        model: &str,
+    ) -> Result<String>;
 
     /// Get the provider name
     fn provider_name(&self) -> &str;

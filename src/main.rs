@@ -171,6 +171,7 @@ async fn handle_agent(message: Option<String>) -> Result<(), Box<dyn std::error:
             "zhipu" | "glm" => "https://open.bigmodel.cn/api/paas/v4",
             "gemini" | "google" => "https://generativelanguage.googleapis.com/v1beta",
             "deepseek" => "https://api.deepseek.com/v1",
+            "ollama" => "http://localhost:11434", // Local ollama (no /v1 suffix)
             "vllm" => "", // vLLM requires explicit api_base
             _ => "https://openrouter.ai/api/v1",
         };
@@ -190,7 +191,10 @@ async fn handle_agent(message: Option<String>) -> Result<(), Box<dyn std::error:
             return Err("vLLM api_base not configured".into());
         }
         
-        if api_key.is_empty() && provider != "vllm" {
+        // Local providers (ollama, vllm) don't require API keys
+        let requires_api_key = !matches!(provider.as_str(), "ollama" | "vllm");
+        
+        if api_key.is_empty() && requires_api_key {
             eprintln!("❌ API key not configured for provider: {}", provider);
             eprintln!("Set the API key in ~/.takobull/config.yaml under providers.{}.api_key", provider);
             return Err("API key not configured".into());
