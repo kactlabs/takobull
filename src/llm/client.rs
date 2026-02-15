@@ -32,7 +32,7 @@ impl LlmClient {
         if let Some(idx) = model.find('/') {
             let prefix = &model[..idx];
             // Strip prefix for providers that use it as a namespace
-            if prefix == "vllm" || prefix == "moonshot" || prefix == "nvidia" {
+            if prefix == "vllm" || prefix == "moonshot" || prefix == "nvidia" || prefix == "ollama" {
                 model[idx + 1..].to_string()
             } else {
                 model.to_string()

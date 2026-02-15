@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Core Components Implementation** - Ported essential Go components to Rust with full feature parity
+- **Core Components Implementation** - Ported 10 essential Go components to Rust with full feature parity
   - Config Management: YAML/JSON/TOML loading with environment variable overrides
   - Session Manager: Persistent session storage with atomic file operations
   - State Manager: Tracks last active channel/chat for heartbeat notifications
@@ -27,10 +27,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Ollama now uses `/v1/chat/completions` endpoint (OpenAI-compatible)
   - Fixed API base URL construction to avoid double `/v1` paths
   - Ollama provider no longer requires API key (local LLM)
+  - Added model name normalization to strip provider prefixes (e.g., `ollama/llama2` → `llama2`)
 
 ### Fixed
 - **Ollama Response Parsing**: Fixed response format to use `choices[0].message.content` path
 - **Local Provider Support**: Added ollama and vllm to list of providers that don't require API keys
+- **Model Name Normalization**: Now correctly strips ollama prefix from model names
+
+### Testing
+- **51 tests passing**: 14 config tests, 15 runtime tests, 4 LLM tests, 18 property-based tests
+- **Zero compilation errors and warnings**
+- **End-to-end functionality verified** with local ollama
 
 ### Security
 
