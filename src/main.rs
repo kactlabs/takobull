@@ -47,7 +47,11 @@ enum Commands {
         action: CronAction,
     },
     /// Initialize configuration and workspace
-    Onboard,
+    Onboard {
+        /// Force overwrite existing config
+        #[arg(long)]
+        force: bool,
+    },
 }
 
 #[derive(Subcommand, Debug)]
@@ -90,8 +94,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Some(Commands::Cron { action }) => {
             handle_cron(action).await?;
         }
-        Some(Commands::Onboard) => {
-            handle_onboard().await?;
+        Some(Commands::Onboard { force }) => {
+            handle_onboard(force).await?;
         }
         None => {
             // Default: show help
@@ -158,14 +162,35 @@ async fn handle_agent(message: Option<String>) -> Result<(), Box<dyn std::error:
             .unwrap_or("")
             .to_string();
         
+        // Provider-specific default API bases
+        let default_api_base = match provider.as_str() {
+            "openai" | "gpt" => "https://api.openai.com/v1",
+            "anthropic" | "claude" => "https://api.anthropic.com/v1",
+            "openrouter" => "https://openrouter.ai/api/v1",
+            "groq" => "https://api.groq.com/openai/v1",
+            "zhipu" | "glm" => "https://open.bigmodel.cn/api/paas/v4",
+            "gemini" | "google" => "https://generativelanguage.googleapis.com/v1beta",
+            "deepseek" => "https://api.deepseek.com/v1",
+            "vllm" => "", // vLLM requires explicit api_base
+            _ => "https://openrouter.ai/api/v1",
+        };
+        
         let api_base = provider_config["api_base"]
             .as_str()
-            .unwrap_or("https://openrouter.ai/api/v1")
+            .unwrap_or(default_api_base)
             .to_string();
         
         info!("Using provider: {}, model: {}", provider, model);
         
-        if api_key.is_empty() {
+        // Validate provider configuration
+        if provider == "vllm" && api_base.is_empty() {
+            eprintln!("❌ vLLM requires api_base to be configured");
+            eprintln!("Set the api_base in ~/.takobull/config.yaml under providers.vllm.api_base");
+            eprintln!("Example: providers.vllm.api_base: http://localhost:8000");
+            return Err("vLLM api_base not configured".into());
+        }
+        
+        if api_key.is_empty() && provider != "vllm" {
             eprintln!("❌ API key not configured for provider: {}", provider);
             eprintln!("Set the API key in ~/.takobull/config.yaml under providers.{}.api_key", provider);
             return Err("API key not configured".into());
@@ -291,7 +316,7 @@ async fn handle_cron(action: CronAction) -> Result<(), Box<dyn std::error::Error
     Ok(())
 }
 
-async fn handle_onboard() -> Result<(), Box<dyn std::error::Error>> {
+async fn handle_onboard(force: bool) -> Result<(), Box<dyn std::error::Error>> {
     info!("Starting onboard process");
     
     let home = std::env::var("HOME")?;
@@ -309,8 +334,8 @@ async fn handle_onboard() -> Result<(), Box<dyn std::error::Error>> {
     }
     println!("✓ Created workspace subdirectories");
     
-    // Create default config if it doesn't exist
-    if !std::path::Path::new(&config_path).exists() {
+    // Create default config (overwrite if force flag is set)
+    if !std::path::Path::new(&config_path).exists() || force {
         let default_config = r#"# TakoBull Configuration
 # Ultra-lightweight personal AI Assistant for embedded systems
 
@@ -347,6 +372,26 @@ providers:
   openai:
     api_key: ""
     api_base: "https://api.openai.com/v1"
+  
+  gemini:
+    api_key: ""
+    api_base: "https://generativelanguage.googleapis.com/v1beta/openai/"
+  
+  zhipu:
+    api_key: ""
+    api_base: "https://open.bigmodel.cn/api/paas/v4"
+  
+  groq:
+    api_key: ""
+    api_base: "https://api.groq.com/openai/v1"
+  
+  deepseek:
+    api_key: ""
+    api_base: "https://api.deepseek.com"
+  
+  vllm:
+    api_key: ""
+    api_base: ""
 
 tools:
   web:

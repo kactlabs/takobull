@@ -27,11 +27,36 @@ impl LlmClient {
         }
     }
 
+    /// Strip provider prefix from model name (e.g., vllm/qwen-7b -> qwen-7b)
+    fn normalize_model_name(&self, model: &str) -> String {
+        if let Some(idx) = model.find('/') {
+            let prefix = &model[..idx];
+            // Strip prefix for providers that use it as a namespace
+            if prefix == "vllm" || prefix == "moonshot" || prefix == "nvidia" {
+                model[idx + 1..].to_string()
+            } else {
+                model.to_string()
+            }
+        } else {
+            model.to_string()
+        }
+    }
+
+    /// Get the correct chat completions endpoint for the provider
+    fn get_chat_endpoint(&self) -> String {
+        let base = self.api_base.trim_end_matches('/');
+        match self.provider.as_str() {
+            "vllm" => format!("{}/v1/chat/completions", base),
+            _ => format!("{}/chat/completions", base),
+        }
+    }
+
     pub async fn chat(&self, message: &str) -> Result<String> {
         match self.provider.as_str() {
             "openrouter" => self.chat_openrouter(message).await,
             "openai" => self.chat_openai(message).await,
             "anthropic" => self.chat_anthropic(message).await,
+            "vllm" => self.chat_openai(message).await, // vllm uses OpenAI-compatible API
             _ => Err(Error::llm_provider(format!(
                 "Unsupported provider: {}",
                 self.provider
@@ -48,6 +73,7 @@ impl LlmClient {
             "openrouter" => self.chat_openrouter_with_tools(message, tools).await,
             "openai" => self.chat_openai_with_tools(message, tools).await,
             "anthropic" => self.chat_anthropic_with_tools(message, tools).await,
+            "vllm" => self.chat_openai_with_tools(message, tools).await, // vllm uses OpenAI-compatible API
             _ => Err(Error::llm_provider(format!(
                 "Unsupported provider: {}",
                 self.provider
@@ -65,6 +91,7 @@ impl LlmClient {
             "openrouter" => self.chat_openrouter_with_tools_and_history(tools, history).await,
             "openai" => self.chat_openai_with_tools_and_history(tools, history).await,
             "anthropic" => self.chat_anthropic_with_tools_and_history(tools, history).await,
+            "vllm" => self.chat_openai_with_tools_and_history(tools, history).await, // vllm uses OpenAI-compatible API
             _ => Err(Error::llm_provider(format!(
                 "Unsupported provider: {}",
                 self.provider
@@ -78,10 +105,11 @@ impl LlmClient {
         history: &[serde_json::Value],
     ) -> Result<LlmResponse> {
         let client = reqwest::Client::new();
-        let url = format!("{}/chat/completions", self.api_base);
+        let url = self.get_chat_endpoint();
+        let model = self.normalize_model_name(&self.model);
 
         let payload = json!({
-            "model": self.model,
+            "model": model,
             "messages": history,
             "tools": tools,
             "tool_choice": "auto",
@@ -148,10 +176,11 @@ impl LlmClient {
         history: &[serde_json::Value],
     ) -> Result<LlmResponse> {
         let client = reqwest::Client::new();
-        let url = format!("{}/chat/completions", self.api_base);
+        let url = self.get_chat_endpoint();
+        let model = self.normalize_model_name(&self.model);
 
         let payload = json!({
-            "model": self.model,
+            "model": model,
             "messages": history,
             "tools": tools,
             "tool_choice": "auto",
@@ -219,9 +248,10 @@ impl LlmClient {
     ) -> Result<LlmResponse> {
         let client = reqwest::Client::new();
         let url = format!("{}/messages", self.api_base);
+        let model = self.normalize_model_name(&self.model);
 
         let payload = json!({
-            "model": self.model,
+            "model": model,
             "max_tokens": 2048,
             "tools": tools,
             "messages": history,
@@ -287,10 +317,11 @@ impl LlmClient {
 
     async fn chat_openrouter(&self, message: &str) -> Result<String> {
         let client = reqwest::Client::new();
-        let url = format!("{}/chat/completions", self.api_base);
+        let url = self.get_chat_endpoint();
+        let model = self.normalize_model_name(&self.model);
 
         let payload = json!({
-            "model": self.model,
+            "model": model,
             "messages": [
                 {
                     "role": "user",
@@ -336,10 +367,11 @@ impl LlmClient {
         tools: Vec<serde_json::Value>,
     ) -> Result<LlmResponse> {
         let client = reqwest::Client::new();
-        let url = format!("{}/chat/completions", self.api_base);
+        let url = self.get_chat_endpoint();
+        let model = self.normalize_model_name(&self.model);
 
         let payload = json!({
-            "model": self.model,
+            "model": model,
             "messages": [
                 {
                     "role": "user",
@@ -407,10 +439,11 @@ impl LlmClient {
 
     async fn chat_openai(&self, message: &str) -> Result<String> {
         let client = reqwest::Client::new();
-        let url = format!("{}/chat/completions", self.api_base);
+        let url = self.get_chat_endpoint();
+        let model = self.normalize_model_name(&self.model);
 
         let payload = json!({
-            "model": self.model,
+            "model": model,
             "messages": [
                 {
                     "role": "user",
@@ -456,10 +489,11 @@ impl LlmClient {
         tools: Vec<serde_json::Value>,
     ) -> Result<LlmResponse> {
         let client = reqwest::Client::new();
-        let url = format!("{}/chat/completions", self.api_base);
+        let url = self.get_chat_endpoint();
+        let model = self.normalize_model_name(&self.model);
 
         let payload = json!({
-            "model": self.model,
+            "model": model,
             "messages": [
                 {
                     "role": "user",
@@ -528,9 +562,10 @@ impl LlmClient {
     async fn chat_anthropic(&self, message: &str) -> Result<String> {
         let client = reqwest::Client::new();
         let url = format!("{}/messages", self.api_base);
+        let model = self.normalize_model_name(&self.model);
 
         let payload = json!({
-            "model": self.model,
+            "model": model,
             "max_tokens": 2048,
             "messages": [
                 {
@@ -577,9 +612,10 @@ impl LlmClient {
     ) -> Result<LlmResponse> {
         let client = reqwest::Client::new();
         let url = format!("{}/messages", self.api_base);
+        let model = self.normalize_model_name(&self.model);
 
         let payload = json!({
-            "model": self.model,
+            "model": model,
             "max_tokens": 2048,
             "tools": tools,
             "messages": [

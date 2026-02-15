@@ -42,25 +42,12 @@ impl AgentExecutor {
             }
 
             // Get tool definitions
-            let tool_defs = self.tool_registry.get_definitions().await;
-            let tools_json: Vec<serde_json::Value> = tool_defs
-                .iter()
-                .map(|t| {
-                    json!({
-                        "type": t.r#type,
-                        "function": {
-                            "name": t.function.name,
-                            "description": t.function.description,
-                            "parameters": t.function.parameters,
-                        }
-                    })
-                })
-                .collect();
+            let _tool_defs = self.tool_registry.get_definitions().await;
 
             // Call LLM with tools and conversation history
             let response = self
                 .llm_client
-                .chat_with_tools_and_history(message, tools_json, &conversation)
+                .chat_with_tools_and_history(message, vec![], &conversation)
                 .await?;
 
             // Build assistant message with tool calls if any

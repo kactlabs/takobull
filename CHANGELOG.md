@@ -16,6 +16,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 ### Fixed
+- **vLLM Provider Support** - Fixed vLLM provider integration to work with llama.cpp backend
+  - Added provider-specific API base defaults (vLLM no longer gets OpenRouter default)
+  - Implemented vLLM configuration validation requiring explicit `api_base` setting
+  - Added model name normalization to strip provider prefixes (e.g., `vllm/model-name` → `model-name`)
+  - Fixed endpoint routing to use `/v1/chat/completions` for vLLM instead of `/chat/completions`
+  - Properly handle trailing slashes in API base URLs to prevent double slashes
+  - Disabled tools in agent executor to prevent unnecessary tool calls with vLLM models
+  - Rust version now achieves feature parity with Go version for vLLM provider
 
 ### Security
 
