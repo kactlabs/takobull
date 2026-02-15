@@ -13,7 +13,7 @@
 
 ---
 
-🤖 **TakoBull** is an ultra-lightweight personal AI Assistant, a high-performance Rust port of PicoClaw. Originally built in Go, TakoBull has been rewritten in Rust to achieve even better performance, memory efficiency, and safety guarantees while maintaining full feature parity.
+🤖 **TakoBull** is an ultra-lightweight personal AI Assistant, a high-performance Rust port of  [PicoClaw](https://github.com/sipeed/picoclaw). Originally built in Go, TakoBull has been rewritten in Rust to achieve even better performance, memory efficiency, and safety guarantees while maintaining full feature parity.
 
 ⚡️ Runs on $10 hardware with <10MB RAM: That's 99% less memory than traditional AI assistants and 98% cheaper than a Mac mini!
 
