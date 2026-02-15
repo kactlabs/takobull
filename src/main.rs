@@ -223,7 +223,7 @@ async fn handle_status() -> Result<(), Box<dyn std::error::Error>> {
     let config_path = format!("{}/.takobull/config.yaml", home);
     let workspace = format!("{}/.takobull/workspace", home);
     
-    println!("🦞 takobull Status");
+    println!("🤖 takobull Status");
     println!("Version: v{}", env!("CARGO_PKG_VERSION"));
     
     // Config status
