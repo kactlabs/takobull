@@ -25,6 +25,12 @@ impl AgentExecutor {
 
         let mut iteration = 0;
         let mut final_response = String::new();
+        let mut conversation: Vec<serde_json::Value> = vec![
+            json!({
+                "role": "user",
+                "content": message
+            })
+        ];
 
         loop {
             iteration += 1;
@@ -51,11 +57,37 @@ impl AgentExecutor {
                 })
                 .collect();
 
-            // Call LLM with tools
+            // Call LLM with tools and conversation history
             let response = self
                 .llm_client
-                .chat_with_tools(message, tools_json)
+                .chat_with_tools_and_history(message, tools_json, &conversation)
                 .await?;
+
+            // Build assistant message with tool calls if any
+            let mut assistant_msg = json!({
+                "role": "assistant",
+                "content": response.content
+            });
+
+            if !response.tool_calls.is_empty() {
+                let tool_calls_json: Vec<serde_json::Value> = response
+                    .tool_calls
+                    .iter()
+                    .map(|tc| {
+                        json!({
+                            "id": tc.id,
+                            "type": "function",
+                            "function": {
+                                "name": tc.name,
+                                "arguments": serde_json::to_string(&tc.arguments).unwrap_or_default()
+                            }
+                        })
+                    })
+                    .collect();
+                assistant_msg["tool_calls"] = json!(tool_calls_json);
+            }
+
+            conversation.push(assistant_msg);
 
             // If no tool calls, we're done
             if response.tool_calls.is_empty() {
@@ -68,7 +100,7 @@ impl AgentExecutor {
             let tool_names: Vec<&str> = response.tool_calls.iter().map(|tc| tc.name.as_str()).collect();
             info!("LLM requested tool calls: {:?} (iteration: {})", tool_names, iteration);
 
-            // Execute tools
+            // Execute tools and collect results
             for tool_call in &response.tool_calls {
                 debug!("Executing tool: {}", tool_call.name);
 
@@ -85,6 +117,13 @@ impl AgentExecutor {
                         println!("{}", user_content);
                     }
                 }
+
+                // Add tool result to conversation (OpenAI format)
+                conversation.push(json!({
+                    "role": "tool",
+                    "tool_call_id": tool_call.id,
+                    "content": result.for_llm
+                }));
             }
         }
 

@@ -70,7 +70,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
     // Initialize logging
-    picoclaw::logging::setup::init_logging(&args.log_level)?;
+    takobull::logging::setup::init_logging(&args.log_level)?;
 
     info!("Starting TakoBull v{}", env!("CARGO_PKG_VERSION"));
     if let Some(config_path) = &args.config {
@@ -172,17 +172,17 @@ async fn handle_agent(message: Option<String>) -> Result<(), Box<dyn std::error:
         }
         
         // Create LLM client
-        let llm_client = picoclaw::llm::LlmClient::new(&provider, &model, &api_key, &api_base);
+        let llm_client = takobull::llm::LlmClient::new(&provider, &model, &api_key, &api_base);
         
         // Create tool registry and register tools
-        let tool_registry = picoclaw::tools::ToolRegistry::new();
+        let tool_registry = takobull::tools::ToolRegistry::new();
         let write_file_tool = std::sync::Arc::new(
-            picoclaw::tools::WriteFileTool::new(workspace_path)
+            takobull::tools::WriteFileTool::new(workspace_path)
         );
         tool_registry.register(write_file_tool).await;
         
         // Create agent executor
-        let executor = picoclaw::agent::AgentExecutor::new(llm_client, tool_registry);
+        let executor = takobull::agent::AgentExecutor::new(llm_client, tool_registry);
         
         println!("🤖 Processing: {}", msg);
         
