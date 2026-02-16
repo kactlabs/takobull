@@ -39,13 +39,13 @@ impl AgentExecutor {
         // Check if provider supports native tool calling with tool role
         let supports_tool_role = matches!(
             self.llm_client.provider.as_str(),
-            "openai" | "anthropic" | "openrouter"
+            "openai" | "anthropic" | "openrouter" | "gemini" | "google"
         );
         
         // Check if provider supports tool calling (even if via prompt engineering)
         let enable_tools = matches!(
             self.llm_client.provider.as_str(),
-            "openai" | "anthropic" | "openrouter" | "ollama"
+            "openai" | "anthropic" | "openrouter" | "ollama" | "gemini" | "google"
         );
         
         let mut conversation: Vec<serde_json::Value> = vec![

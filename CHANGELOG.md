@@ -15,16 +15,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Enables quick testing across different providers and models without editing config
 
 - **Google Gemini Support** - Full integration with Google's Gemini API
-  - Native Gemini API implementation (not OpenAI-compatible)
+  - Native Gemini API implementation with function calling support
   - Support for gemini-2.5-flash and other Gemini models
   - Proper authentication using API key in URL query parameter
-  - Conversational responses without tool calling (treated like vLLM)
+  - Full tool calling support with native Gemini function calling format
 
-- **Ollama Prompt-Based Tool Calling** - Implemented tool calling for Ollama via prompt engineering
-  - Tool descriptions injected into system prompt
-  - JSON-based tool call format for model responses
-  - Automatic parsing of tool calls from model output
-  - Enables Ollama to use tools like write_file, despite lacking native tool support
+- **Ollama Automatic Tool Detection** - Graceful handling of models with/without tool support
+  - Automatically detects when a model doesn't support tools
+  - Falls back to conversational mode for base models (llama2, codellama)
+  - Full tool calling support for compatible models (llama3.1+, qwen2.5-coder, mistral)
+  - Matches Go implementation behavior for provider compatibility
 
 ### Changed
 - **System Prompt Improvements** - Enhanced agent behavior and response quality
@@ -39,9 +39,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Prevents "Conversation roles must alternate" errors with llama.cpp
 
 - **Provider Tool Support Matrix** - Clarified which providers support tool calling
-  - OpenAI, Anthropic, OpenRouter: Full native tool calling with "tool" role
-  - Ollama: Prompt-based tool calling with user/assistant roles
-  - vLLM, Gemini: Conversational responses without tools
+  - OpenAI, Anthropic, OpenRouter, Gemini: Full native tool calling with proper role handling
+  - Ollama: Native tool calling for compatible models (llama3.1+, qwen2.5-coder, mistral); conversational mode for base models
+  - vLLM: Conversational responses without tools
 
 ### Fixed
 - vLLM/llama.cpp conversation role alternation errors

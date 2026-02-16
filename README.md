@@ -144,12 +144,14 @@ takobull cron list
 
 ## 🤖 Supported LLM Providers
 
-- OpenAI (GPT-4, GPT-4 Mini, GPT-3.5) ✅
-- Anthropic Claude ✅
-- OpenRouter ✅
-- Google Gemini ✅
-- Ollama (with prompt-based tool calling) ✅
-- vLLM / llama.cpp ✅
+- OpenAI (GPT-4, GPT-4 Mini, GPT-3.5) ✅ Full tool calling
+- Anthropic Claude ✅ Full tool calling
+- OpenRouter ✅ Full tool calling
+- Google Gemini ✅ Full tool calling
+- Ollama ✅
+  - Tool calling supported with: llama3.1+, llama3.2+, qwen2.5-coder, mistral, deepseek-coder
+  - Conversational mode for base models: llama2, codellama
+- vLLM / llama.cpp ✅ Conversational mode
 - Zhipu (智谱) (To be implemented soon)
 - DeepSeek (To be implemented soon)
 - Groq (To be implemented soon)
