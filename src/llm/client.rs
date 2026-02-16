@@ -58,6 +58,7 @@ impl LlmClient {
             "anthropic" => self.chat_anthropic(message).await,
             "vllm" => self.chat_openai(message).await, // vllm uses OpenAI-compatible API
             "ollama" => self.chat_ollama(message).await,
+            "gemini" | "google" => self.chat_gemini(message).await,
             _ => Err(Error::llm_provider(format!(
                 "Unsupported provider: {}",
                 self.provider
@@ -76,6 +77,7 @@ impl LlmClient {
             "anthropic" => self.chat_anthropic_with_tools(message, tools).await,
             "vllm" => self.chat_openai_with_tools(message, tools).await, // vllm uses OpenAI-compatible API
             "ollama" => self.chat_ollama_with_tools(message, tools).await,
+            "gemini" | "google" => self.chat_gemini_with_tools(message, tools).await,
             _ => Err(Error::llm_provider(format!(
                 "Unsupported provider: {}",
                 self.provider
@@ -95,6 +97,7 @@ impl LlmClient {
             "anthropic" => self.chat_anthropic_with_tools_and_history(tools, history).await,
             "vllm" => self.chat_openai_with_tools_and_history(tools, history).await, // vllm uses OpenAI-compatible API
             "ollama" => self.chat_ollama_with_tools_and_history(tools, history).await,
+            "gemini" | "google" => self.chat_gemini_with_tools_and_history(tools, history).await,
             _ => Err(Error::llm_provider(format!(
                 "Unsupported provider: {}",
                 self.provider
@@ -792,6 +795,286 @@ impl LlmClient {
         Ok(LlmResponse {
             content,
             tool_calls: Vec::new(),
+        })
+    }
+
+    async fn chat_gemini(&self, message: &str) -> Result<String> {
+        let client = reqwest::Client::new();
+        let model = self.normalize_model_name(&self.model);
+        let url = format!("{}/models/{}:generateContent?key={}", 
+            self.api_base.trim_end_matches('/'), model, self.api_key);
+
+        let payload = json!({
+            "contents": [{
+                "parts": [{
+                    "text": message
+                }]
+            }]
+        });
+
+        let response = client
+            .post(&url)
+            .header("Content-Type", "application/json")
+            .json(&payload)
+            .send()
+            .await
+            .map_err(|e| Error::http(format!("Request failed: {}", e)))?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let text = response.text().await.unwrap_or_default();
+            return Err(Error::llm_provider(format!(
+                "API error {}: {}",
+                status, text
+            )));
+        }
+
+        let data: serde_json::Value = response
+            .json()
+            .await
+            .map_err(|e| Error::serialization(format!("Failed to parse response: {}", e)))?;
+
+        data["candidates"][0]["content"]["parts"][0]["text"]
+            .as_str()
+            .map(|s| s.to_string())
+            .ok_or_else(|| Error::llm_provider("No content in response".to_string()))
+    }
+
+    async fn chat_gemini_with_tools(
+        &self,
+        message: &str,
+        tools: Vec<serde_json::Value>,
+    ) -> Result<LlmResponse> {
+        let client = reqwest::Client::new();
+        let model = self.normalize_model_name(&self.model);
+        let url = format!("{}/models/{}:generateContent?key={}", 
+            self.api_base.trim_end_matches('/'), model, self.api_key);
+
+        // Convert OpenAI tool format to Gemini format
+        let gemini_tools: Vec<serde_json::Value> = tools
+            .iter()
+            .map(|tool| {
+                json!({
+                    "functionDeclarations": [{
+                        "name": tool["function"]["name"],
+                        "description": tool["function"]["description"],
+                        "parameters": tool["function"]["parameters"]
+                    }]
+                })
+            })
+            .collect();
+
+        let payload = json!({
+            "contents": [{
+                "parts": [{
+                    "text": message
+                }]
+            }],
+            "tools": gemini_tools
+        });
+
+        let response = client
+            .post(&url)
+            .header("Content-Type", "application/json")
+            .json(&payload)
+            .send()
+            .await
+            .map_err(|e| Error::http(format!("Request failed: {}", e)))?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let text = response.text().await.unwrap_or_default();
+            return Err(Error::llm_provider(format!(
+                "API error {}: {}",
+                status, text
+            )));
+        }
+
+        let data: serde_json::Value = response
+            .json()
+            .await
+            .map_err(|e| Error::serialization(format!("Failed to parse response: {}", e)))?;
+
+        let mut content = String::new();
+        let mut tool_calls = Vec::new();
+
+        if let Some(parts) = data["candidates"][0]["content"]["parts"].as_array() {
+            for part in parts {
+                if let Some(text) = part["text"].as_str() {
+                    content.push_str(text);
+                }
+                if let Some(func_call) = part["functionCall"].as_object() {
+                    if let (Some(name), Some(args)) = (
+                        func_call.get("name").and_then(|v| v.as_str()),
+                        func_call.get("args").and_then(|v| v.as_object()),
+                    ) {
+                        let mut arguments = HashMap::new();
+                        for (k, v) in args {
+                            arguments.insert(k.clone(), v.clone());
+                        }
+                        tool_calls.push(ToolCall {
+                            id: format!("call_{}", uuid::Uuid::new_v4()),
+                            name: name.to_string(),
+                            arguments,
+                        });
+                    }
+                }
+            }
+        }
+
+        Ok(LlmResponse {
+            content,
+            tool_calls,
+        })
+    }
+
+    async fn chat_gemini_with_tools_and_history(
+        &self,
+        tools: Vec<serde_json::Value>,
+        history: &[serde_json::Value],
+    ) -> Result<LlmResponse> {
+        let client = reqwest::Client::new();
+        let model = self.normalize_model_name(&self.model);
+        let url = format!("{}/models/{}:generateContent?key={}", 
+            self.api_base.trim_end_matches('/'), model, self.api_key);
+
+        // Convert OpenAI format to Gemini format
+        let mut gemini_contents = Vec::new();
+        for msg in history {
+            let role = msg["role"].as_str().unwrap_or("user");
+            
+            // Skip system messages (Gemini handles them differently)
+            if role == "system" {
+                continue;
+            }
+            
+            // Map roles: user -> user, assistant -> model, tool -> function
+            let gemini_role = match role {
+                "assistant" => "model",
+                "tool" => {
+                    // Tool results go as function responses
+                    if let Some(content) = msg["content"].as_str() {
+                        gemini_contents.push(json!({
+                            "role": "function",
+                            "parts": [{
+                                "functionResponse": {
+                                    "name": msg["tool_call_id"].as_str().unwrap_or("unknown"),
+                                    "response": {
+                                        "result": content
+                                    }
+                                }
+                            }]
+                        }));
+                    }
+                    continue;
+                }
+                _ => "user"
+            };
+            
+            if let Some(content) = msg["content"].as_str() {
+                if !content.is_empty() {
+                    gemini_contents.push(json!({
+                        "role": gemini_role,
+                        "parts": [{
+                            "text": content
+                        }]
+                    }));
+                }
+            }
+            
+            // Handle tool calls from assistant
+            if let Some(tool_calls) = msg["tool_calls"].as_array() {
+                for tc in tool_calls {
+                    if let (Some(name), Some(args)) = (
+                        tc["function"]["name"].as_str(),
+                        tc["function"]["arguments"].as_str(),
+                    ) {
+                        let args_obj: serde_json::Value = serde_json::from_str(args).unwrap_or(json!({}));
+                        gemini_contents.push(json!({
+                            "role": "model",
+                            "parts": [{
+                                "functionCall": {
+                                    "name": name,
+                                    "args": args_obj
+                                }
+                            }]
+                        }));
+                    }
+                }
+            }
+        }
+
+        // Convert OpenAI tool format to Gemini format
+        let gemini_tools: Vec<serde_json::Value> = tools
+            .iter()
+            .map(|tool| {
+                json!({
+                    "functionDeclarations": [{
+                        "name": tool["function"]["name"],
+                        "description": tool["function"]["description"],
+                        "parameters": tool["function"]["parameters"]
+                    }]
+                })
+            })
+            .collect();
+
+        let payload = json!({
+            "contents": gemini_contents,
+            "tools": gemini_tools
+        });
+
+        let response = client
+            .post(&url)
+            .header("Content-Type", "application/json")
+            .json(&payload)
+            .send()
+            .await
+            .map_err(|e| Error::http(format!("Request failed: {}", e)))?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let text = response.text().await.unwrap_or_default();
+            return Err(Error::llm_provider(format!(
+                "API error {}: {}",
+                status, text
+            )));
+        }
+
+        let data: serde_json::Value = response
+            .json()
+            .await
+            .map_err(|e| Error::serialization(format!("Failed to parse response: {}", e)))?;
+
+        let mut content = String::new();
+        let mut tool_calls = Vec::new();
+
+        if let Some(parts) = data["candidates"][0]["content"]["parts"].as_array() {
+            for part in parts {
+                if let Some(text) = part["text"].as_str() {
+                    content.push_str(text);
+                }
+                if let Some(func_call) = part["functionCall"].as_object() {
+                    if let (Some(name), Some(args)) = (
+                        func_call.get("name").and_then(|v| v.as_str()),
+                        func_call.get("args").and_then(|v| v.as_object()),
+                    ) {
+                        let mut arguments = HashMap::new();
+                        for (k, v) in args {
+                            arguments.insert(k.clone(), v.clone());
+                        }
+                        tool_calls.push(ToolCall {
+                            id: format!("call_{}", uuid::Uuid::new_v4()),
+                            name: name.to_string(),
+                            arguments,
+                        });
+                    }
+                }
+            }
+        }
+
+        Ok(LlmResponse {
+            content,
+            tool_calls,
         })
     }
 }

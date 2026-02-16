@@ -80,41 +80,17 @@ impl AgentExecutor {
                     .chat_with_tools_and_history(message, tools_json, &conversation)
                     .await?
             } else {
-                // Call LLM without tools for providers that don't support them properly
-                let client = reqwest::Client::new();
-                let url = self.llm_client.get_chat_endpoint();
-                let model = self.llm_client.normalize_model_name(&self.llm_client.model);
-
-                let payload = json!({
-                    "model": model,
-                    "messages": conversation,
-                    "stream": false,
-                });
-
-                let response = client
-                    .post(&url)
-                    .header("Content-Type", "application/json")
-                    .json(&payload)
-                    .send()
-                    .await
-                    .map_err(|e| format!("Request failed: {}", e))?;
-
-                if !response.status().is_success() {
-                    let status = response.status();
-                    let text = response.text().await.unwrap_or_default();
-                    return Err(format!("API error {}: {}", status, text).into());
-                }
-
-                let data: serde_json::Value = response
-                    .json()
-                    .await
-                    .map_err(|e| format!("Failed to parse response: {}", e))?;
-
-                let content = data["choices"][0]["message"]["content"]
-                    .as_str()
-                    .unwrap_or("")
-                    .to_string();
-
+                // For providers without tool support, use simple chat
+                // Extract the last user message
+                let last_message = conversation
+                    .iter()
+                    .rev()
+                    .find(|msg| msg["role"] == "user")
+                    .and_then(|msg| msg["content"].as_str())
+                    .unwrap_or(message);
+                
+                let content = self.llm_client.chat(last_message).await?;
+                
                 crate::llm::LlmResponse {
                     content,
                     tool_calls: Vec::new(),
