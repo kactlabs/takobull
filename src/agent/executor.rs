@@ -36,14 +36,17 @@ impl AgentExecutor {
         // Build system prompt
         let system_prompt = self.context_builder.build_system_prompt().await;
         
-        // Check if provider supports native tool calling
+        // Check if provider supports native tool calling with tool role
         let supports_tool_role = matches!(
             self.llm_client.provider.as_str(),
             "openai" | "anthropic" | "openrouter"
         );
         
-        // For providers without proper tool support, skip tool calling entirely
-        let enable_tools = supports_tool_role;
+        // Check if provider supports tool calling (even if via prompt engineering)
+        let enable_tools = matches!(
+            self.llm_client.provider.as_str(),
+            "openai" | "anthropic" | "openrouter" | "ollama"
+        );
         
         let mut conversation: Vec<serde_json::Value> = vec![
             json!({

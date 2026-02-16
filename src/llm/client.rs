@@ -750,20 +750,26 @@ impl LlmClient {
 
     async fn chat_ollama_with_tools_and_history(
         &self,
-        _tools: Vec<serde_json::Value>,
+        tools: Vec<serde_json::Value>,
         history: &[serde_json::Value],
     ) -> Result<LlmResponse> {
-        // Ollama doesn't natively support tool_calls, so we just return the content
-        // without tool calls. Applications can implement tool calling via prompt engineering.
+        // Ollama uses OpenAI-compatible API format
+        // Some models support tool calling (llama3.1+, qwen2.5-coder, mistral)
+        // Base models (llama2) don't support tools - we'll try without tools if it fails
         let client = reqwest::Client::new();
         let url = self.get_chat_endpoint();
         let model = self.normalize_model_name(&self.model);
 
-        let payload = json!({
+        // First try with tools
+        let mut payload = json!({
             "model": model,
             "messages": history,
             "stream": false,
         });
+
+        if !tools.is_empty() {
+            payload["tools"] = json!(tools);
+        }
 
         let response = client
             .post(&url)
@@ -772,6 +778,56 @@ impl LlmClient {
             .send()
             .await
             .map_err(|e| Error::http(format!("Request failed: {}", e)))?;
+
+        // If we get a 400 error about tools not being supported, retry without tools
+        if response.status() == 400 {
+            let text = response.text().await.unwrap_or_default();
+            if text.contains("does not support tools") {
+                // Retry without tools
+                let payload_no_tools = json!({
+                    "model": model,
+                    "messages": history,
+                    "stream": false,
+                });
+
+                let response_retry = client
+                    .post(&url)
+                    .header("Content-Type", "application/json")
+                    .json(&payload_no_tools)
+                    .send()
+                    .await
+                    .map_err(|e| Error::http(format!("Request failed: {}", e)))?;
+
+                if !response_retry.status().is_success() {
+                    let status = response_retry.status();
+                    let text = response_retry.text().await.unwrap_or_default();
+                    return Err(Error::llm_provider(format!(
+                        "API error {}: {}",
+                        status, text
+                    )));
+                }
+
+                let data: serde_json::Value = response_retry
+                    .json()
+                    .await
+                    .map_err(|e| Error::serialization(format!("Failed to parse response: {}", e)))?;
+
+                let content = data["choices"][0]["message"]["content"]
+                    .as_str()
+                    .unwrap_or("")
+                    .to_string();
+
+                return Ok(LlmResponse {
+                    content,
+                    tool_calls: Vec::new(),
+                });
+            } else {
+                return Err(Error::llm_provider(format!(
+                    "API error 400 Bad Request: {}",
+                    text
+                )));
+            }
+        }
 
         if !response.status().is_success() {
             let status = response.status();
@@ -792,9 +848,29 @@ impl LlmClient {
             .unwrap_or("")
             .to_string();
 
+        // Parse tool calls if present (OpenAI format)
+        let mut tool_calls = Vec::new();
+        if let Some(calls) = data["choices"][0]["message"]["tool_calls"].as_array() {
+            for call in calls {
+                if let (Some(id), Some(name), Some(args)) = (
+                    call["id"].as_str(),
+                    call["function"]["name"].as_str(),
+                    call["function"]["arguments"].as_str(),
+                ) {
+                    let arguments: HashMap<String, serde_json::Value> =
+                        serde_json::from_str(args).unwrap_or_default();
+                    tool_calls.push(ToolCall {
+                        id: id.to_string(),
+                        name: name.to_string(),
+                        arguments,
+                    });
+                }
+            }
+        }
+
         Ok(LlmResponse {
             content,
-            tool_calls: Vec::new(),
+            tool_calls,
         })
     }
 

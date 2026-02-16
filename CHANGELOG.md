@@ -8,6 +8,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **CLI Provider/Model Overrides** - Added `-p/--provider` and `--md` flags to override provider and model for single execution
+  - `-p <provider>` flag to override the configured provider (e.g., `-p openai`, `-p gemini`, `-p ollama`)
+  - `--md <model>` flag to override the configured model (e.g., `--md gpt-4-mini`, `--md gemini-2.5-flash`)
+  - Overrides only affect current execution; config file remains unchanged
+  - Enables quick testing across different providers and models without editing config
+
+- **Google Gemini Support** - Full integration with Google's Gemini API
+  - Native Gemini API implementation (not OpenAI-compatible)
+  - Support for gemini-2.5-flash and other Gemini models
+  - Proper authentication using API key in URL query parameter
+  - Conversational responses without tool calling (treated like vLLM)
+
+- **Ollama Prompt-Based Tool Calling** - Implemented tool calling for Ollama via prompt engineering
+  - Tool descriptions injected into system prompt
+  - JSON-based tool call format for model responses
+  - Automatic parsing of tool calls from model output
+  - Enables Ollama to use tools like write_file, despite lacking native tool support
+
+### Changed
+- **System Prompt Improvements** - Enhanced agent behavior and response quality
+  - Added explicit response style guidelines (concise, no emojis, professional)
+  - Clear examples of when to use tools vs. when to respond directly
+  - Prevents unnecessary tool usage for simple questions (e.g., "What is 2+2?")
+  - Reduces chatty responses from models like llama2
+
+- **Conversation History Handling** - Fixed role alternation for providers without native tool support
+  - vLLM and Ollama now use user/assistant role alternation (no "tool" role)
+  - Tool results converted to user messages for compatibility
+  - Prevents "Conversation roles must alternate" errors with llama.cpp
+
+- **Provider Tool Support Matrix** - Clarified which providers support tool calling
+  - OpenAI, Anthropic, OpenRouter: Full native tool calling with "tool" role
+  - Ollama: Prompt-based tool calling with user/assistant roles
+  - vLLM, Gemini: Conversational responses without tools
+
+### Fixed
+- vLLM/llama.cpp conversation role alternation errors
+- Ollama not using tools for action requests
+- Chatty responses from llama2 and similar models
+- Gemini authentication and API endpoint configuration
 
 ## [0.2.3] - 2026-02-15
 

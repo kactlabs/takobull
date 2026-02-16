@@ -104,6 +104,11 @@ providers:
 # Send a message
 takobull agent -m "Write a Python function to sort a list"
 
+# Override provider and model for a single execution
+takobull agent -p openai --md gpt-4-mini -m "What is 2+2?"
+takobull agent -p gemini --md gemini-2.5-flash -m "Explain Rust ownership"
+takobull agent -p ollama --md llama2 -m "Write a hello world in Python"
+
 # Start the gateway (for channel integrations)
 takobull gateway
 
@@ -120,17 +125,31 @@ takobull cron list
 | ------------------------- | ----------------------------- |
 | `takobull onboard`         | Initialize config & workspace |
 | `takobull agent -m "..."` | Chat with the agent           |
+| `takobull agent -p <provider> --md <model> -m "..."` | Override provider/model for single execution |
 | `takobull agent`           | Interactive chat mode         |
 | `takobull gateway`         | Start the gateway             |
 | `takobull status`          | Show system status            |
 | `takobull cron list`       | List all scheduled jobs       |
 
+### Agent Command Options
+
+| Option | Short | Description | Example |
+|--------|-------|-------------|---------|
+| `--message` | `-m` | Message to send to the agent | `-m "What is 2+2?"` |
+| `--provider` | `-p` | Override provider for this execution | `-p openai` |
+| `--md` | | Override model for this execution | `--md gpt-4-mini` |
+| `--config` | `-c` | Path to configuration file | `-c custom-config.yaml` |
+| `--log-level` | `-l` | Log level (debug, info, warn, error) | `-l debug` |
+| `--verbose` | `-v` | Enable verbose output | `-v` |
+
 ## 🤖 Supported LLM Providers
 
-- OpenAI (GPT-4, GPT-4 Mini, GPT-3.5)
-- Anthropic Claude (To be implemented soon)
-- OpenRouter (To be implemented soon)
-- Google Gemini (To be implemented soon)
+- OpenAI (GPT-4, GPT-4 Mini, GPT-3.5) ✅
+- Anthropic Claude ✅
+- OpenRouter ✅
+- Google Gemini ✅
+- Ollama (with prompt-based tool calling) ✅
+- vLLM / llama.cpp ✅
 - Zhipu (智谱) (To be implemented soon)
 - DeepSeek (To be implemented soon)
 - Groq (To be implemented soon)
