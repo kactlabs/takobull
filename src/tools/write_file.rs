@@ -55,7 +55,8 @@ impl Tool for WriteFileTool {
             None => return ToolResult::error("Missing 'content' parameter"),
         };
 
-        tracing::debug!("WriteFileTool: path={}, content_len={}", path, content.len());
+        // Log content before writing
+        info!("Content to write to '{}' ({} bytes):\n{}", path, content.len(), content);
 
         // Validate path is within workspace
         let full_path = std::path::PathBuf::from(&self.workspace).join(path);
@@ -83,8 +84,16 @@ impl Tool for WriteFileTool {
             Ok(_) => {
                 let abs_path = full_path.canonicalize().unwrap_or(full_path.clone());
                 info!("File written: {}", path);
+                
+                // Show content in user output
+                let preview = if content.len() > 500 {
+                    format!("{}...\n[truncated, {} total bytes]", &content[..500], content.len())
+                } else {
+                    content.to_string()
+                };
+                
                 ToolResult::success(format!("File written successfully: {} ({})", path, abs_path.display()))
-                    .with_user_content(format!("✓ Created file: {} ({})", path, abs_path.display()))
+                    .with_user_content(format!("✓ Created file: {} ({})\nContent:\n{}", path, abs_path.display(), preview))
             }
             Err(e) => ToolResult::error(format!("Failed to write file: {}", e)),
         }

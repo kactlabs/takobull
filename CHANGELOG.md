@@ -39,9 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Prevents "Conversation roles must alternate" errors with llama.cpp
 
 - **Provider Tool Support Matrix** - Clarified which providers support tool calling
-  - OpenAI, Anthropic, OpenRouter, Gemini: Full native tool calling with proper role handling
+  - OpenAI, Anthropic, OpenRouter, Gemini, vLLM: Full native tool calling with proper role handling
   - Ollama: Native tool calling for compatible models (llama3.1+, qwen2.5-coder, mistral); conversational mode for base models
-  - vLLM: Conversational responses without tools
 
 ### Fixed
 - vLLM/llama.cpp conversation role alternation errors

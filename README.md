@@ -148,10 +148,10 @@ takobull cron list
 - Anthropic Claude ✅ Full tool calling
 - OpenRouter ✅ Full tool calling
 - Google Gemini ✅ Full tool calling
+- vLLM / llama.cpp ✅ Full tool calling (with compatible models)
 - Ollama ✅
   - Tool calling supported with: llama3.1+, llama3.2+, qwen2.5-coder, mistral, deepseek-coder
   - Conversational mode for base models: llama2, codellama
-- vLLM / llama.cpp ✅ Conversational mode
 - Zhipu (智谱) (To be implemented soon)
 - DeepSeek (To be implemented soon)
 - Groq (To be implemented soon)

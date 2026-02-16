@@ -45,7 +45,7 @@ impl AgentExecutor {
         // Check if provider supports tool calling (even if via prompt engineering)
         let enable_tools = matches!(
             self.llm_client.provider.as_str(),
-            "openai" | "anthropic" | "openrouter" | "ollama" | "gemini" | "google"
+            "openai" | "anthropic" | "openrouter" | "ollama" | "gemini" | "google" | "vllm"
         );
         
         let mut conversation: Vec<serde_json::Value> = vec![
@@ -136,6 +136,11 @@ impl AgentExecutor {
             // Log tool calls
             let tool_names: Vec<&str> = response.tool_calls.iter().map(|tc| tc.name.as_str()).collect();
             info!("LLM requested tool calls: {:?} (iteration: {})", tool_names, iteration);
+            
+            // Debug: Log raw tool call arguments
+            for tool_call in &response.tool_calls {
+                info!("Tool call '{}' arguments: {}", tool_call.name, serde_json::to_string_pretty(&tool_call.arguments).unwrap_or_default());
+            }
 
             // Execute tools and collect results
             let mut tool_results = Vec::new();
