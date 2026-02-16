@@ -55,6 +55,8 @@ impl Tool for WriteFileTool {
             None => return ToolResult::error("Missing 'content' parameter"),
         };
 
+        tracing::debug!("WriteFileTool: path={}, content_len={}", path, content.len());
+
         // Validate path is within workspace
         let full_path = std::path::PathBuf::from(&self.workspace).join(path);
         

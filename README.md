@@ -1,5 +1,7 @@
 <div align="center">
 
+  <img src="image/logo/logo.png" alt="TakoBull Logo" width="200"/>
+
   <h1>TakoBull: Ultra-Efficient AI Assistant in Rust</h1>
 
   <h3>$10 Hardware · 10MB RAM · 1s Boot · 🤖 Powered by Rust</h3>

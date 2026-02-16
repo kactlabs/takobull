@@ -2,6 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::time::SystemTime;
+use crate::tools::ToolCall;
 
 /// Message role enumeration
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -9,6 +10,7 @@ pub enum MessageRole {
     User,
     Assistant,
     System,
+    Tool,
 }
 
 /// Message structure
@@ -17,6 +19,10 @@ pub struct Message {
     pub role: MessageRole,
     pub content: String,
     pub timestamp: SystemTime,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_calls: Option<Vec<ToolCall>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_call_id: Option<String>,
 }
 
 /// Context metadata

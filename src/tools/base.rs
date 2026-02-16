@@ -62,7 +62,7 @@ impl ToolResult {
 }
 
 /// Tool call from LLM response
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ToolCall {
     pub id: String,
     pub name: String,

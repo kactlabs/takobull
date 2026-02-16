@@ -204,7 +204,7 @@ async fn handle_agent(message: Option<String>) -> Result<(), Box<dyn std::error:
         let llm_client = takobull::llm::LlmClient::new(&provider, &model, &api_key, &api_base);
         
         // Create tool registry and register tools
-        let tool_registry = takobull::tools::ToolRegistry::new();
+        let tool_registry = std::sync::Arc::new(takobull::tools::ToolRegistry::new());
         let write_file_tool = std::sync::Arc::new(
             takobull::tools::WriteFileTool::new(workspace_path)
         );

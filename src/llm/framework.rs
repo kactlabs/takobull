@@ -27,6 +27,8 @@ pub struct TokenUsage {
 pub struct LlmResponse {
     pub content: String,
     pub usage: TokenUsage,
+    #[serde(default)]
+    pub tool_calls: Vec<crate::tools::ToolCall>,
 }
 
 /// LLM provider trait
@@ -41,7 +43,7 @@ pub trait LlmProvider: Send + Sync {
         messages: &[Message],
         tools: &[ToolDefinition],
         model: &str,
-    ) -> Result<String>;
+    ) -> Result<LlmResponse>;
 
     /// Get the provider name
     fn provider_name(&self) -> &str;

@@ -8,6 +8,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+## [0.2.3] - 2026-02-15
+
+### Added
+- **Full Tool Calling Loop Implementation** - Complete agent iteration loop with tool execution
+  - LLM iteration loop that handles tool calls and feeds results back to LLM
+  - Tool call parsing and execution with proper message sequencing
+  - Support for multiple tool calls per iteration with result aggregation
+  - Iteration limit (max 10) to prevent infinite loops
+  - Comprehensive logging at each iteration step
+
+### Changed
+- **Message Structure**: Extended `Message` struct with `tool_calls` and `tool_call_id` fields for proper tool call tracking
+- **LLM Framework**: Updated `LlmResponse` to include `tool_calls` vector for tool call results
+- **Agent Loop**: Refactored `process_message()` to use new `run_llm_iteration_loop()` for full tool calling support
+- **ToolCall Struct**: Added `Serialize` and `Deserialize` derives for proper message serialization
+
+### Fixed
+- Tool calls are now properly executed and results fed back to LLM for continued conversation
+- Agent loop no longer returns after first LLM response; continues until LLM stops requesting tools
+- Message history properly maintained across tool execution iterations
+
+## [Unreleased]
+
+### Added
 - **Core Components Implementation** - Ported 10 essential Go components to Rust with full feature parity
   - Config Management: YAML/JSON/TOML loading with environment variable overrides
   - Session Manager: Persistent session storage with atomic file operations

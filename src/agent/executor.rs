@@ -2,20 +2,27 @@
 
 use crate::llm::LlmClient;
 use crate::tools::ToolRegistry;
+use crate::agent::ContextBuilder;
 use serde_json::json;
 use tracing::{info, debug};
+use std::sync::Arc;
 
 pub struct AgentExecutor {
     llm_client: LlmClient,
-    tool_registry: ToolRegistry,
+    tool_registry: Arc<ToolRegistry>,
+    context_builder: ContextBuilder,
     max_iterations: usize,
 }
 
 impl AgentExecutor {
-    pub fn new(llm_client: LlmClient, tool_registry: ToolRegistry) -> Self {
+    pub fn new(llm_client: LlmClient, tool_registry: Arc<ToolRegistry>) -> Self {
+        let mut context_builder = ContextBuilder::new("/tmp");
+        context_builder.set_tool_registry(tool_registry.clone());
+        
         Self {
             llm_client,
             tool_registry,
+            context_builder,
             max_iterations: 10,
         }
     }
@@ -25,7 +32,15 @@ impl AgentExecutor {
 
         let mut iteration = 0;
         let mut final_response = String::new();
+        
+        // Build system prompt
+        let system_prompt = self.context_builder.build_system_prompt().await;
+        
         let mut conversation: Vec<serde_json::Value> = vec![
+            json!({
+                "role": "system",
+                "content": system_prompt
+            }),
             json!({
                 "role": "user",
                 "content": message
@@ -42,12 +57,18 @@ impl AgentExecutor {
             }
 
             // Get tool definitions
-            let _tool_defs = self.tool_registry.get_definitions().await;
+            let tool_defs = self.tool_registry.get_definitions().await;
+            
+            // Convert tool definitions to JSON for LLM
+            let tools_json: Vec<serde_json::Value> = tool_defs
+                .iter()
+                .map(|td| serde_json::to_value(td).unwrap_or(json!({})))
+                .collect();
 
             // Call LLM with tools and conversation history
             let response = self
                 .llm_client
-                .chat_with_tools_and_history(message, vec![], &conversation)
+                .chat_with_tools_and_history(message, tools_json, &conversation)
                 .await?;
 
             // Build assistant message with tool calls if any
