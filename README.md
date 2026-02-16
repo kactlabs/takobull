@@ -1,6 +1,9 @@
 <div align="center">
 
-  <img src="image/logo/logo.png" alt="TakoBull Logo" width="200"/>
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="image/logo/logo-dark_theme.png" width="200">
+    <img src="image/logo/logo.png" alt="TakoBull Logo" width="200"/>
+  </picture>
 
   <h1>TakoBull: Ultra-Efficient AI Assistant in Rust</h1>
 
