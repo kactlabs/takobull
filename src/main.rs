@@ -36,6 +36,14 @@ enum Commands {
         /// Message to send to the agent
         #[arg(short, long)]
         message: Option<String>,
+        
+        /// Override provider for this execution
+        #[arg(short, long)]
+        provider: Option<String>,
+        
+        /// Override model for this execution
+        #[arg(long)]
+        md: Option<String>,
     },
     /// Start the gateway for channel integrations
     Gateway,
@@ -82,8 +90,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     match args.command {
-        Some(Commands::Agent { message }) => {
-            handle_agent(message).await?;
+        Some(Commands::Agent { message, provider, md }) => {
+            handle_agent(message, provider, md).await?;
         }
         Some(Commands::Gateway) => {
             handle_gateway().await?;
@@ -122,7 +130,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-async fn handle_agent(message: Option<String>) -> Result<(), Box<dyn std::error::Error>> {
+async fn handle_agent(
+    message: Option<String>,
+    provider_override: Option<String>,
+    model_override: Option<String>,
+) -> Result<(), Box<dyn std::error::Error>> {
     info!("Starting agent");
 
     // Load config
@@ -145,15 +157,20 @@ async fn handle_agent(message: Option<String>) -> Result<(), Box<dyn std::error:
         // Parse YAML config
         let config: serde_yaml::Value = serde_yaml::from_str(&config_content)?;
         
-        let provider = config["agents"]["defaults"]["provider"]
-            .as_str()
-            .unwrap_or("openrouter")
-            .to_string();
+        // Use override or fall back to config
+        let provider = provider_override.unwrap_or_else(|| {
+            config["agents"]["defaults"]["provider"]
+                .as_str()
+                .unwrap_or("openrouter")
+                .to_string()
+        });
         
-        let model = config["agents"]["defaults"]["model"]
-            .as_str()
-            .unwrap_or("meta-llama/llama-2-70b-chat")
-            .to_string();
+        let model = model_override.unwrap_or_else(|| {
+            config["agents"]["defaults"]["model"]
+                .as_str()
+                .unwrap_or("meta-llama/llama-2-70b-chat")
+                .to_string()
+        });
         
         // Get API key and base from provider config
         let provider_config = &config["providers"][&provider];

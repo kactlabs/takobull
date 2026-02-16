@@ -36,6 +36,15 @@ impl AgentExecutor {
         // Build system prompt
         let system_prompt = self.context_builder.build_system_prompt().await;
         
+        // Check if provider supports native tool calling
+        let supports_tool_role = matches!(
+            self.llm_client.provider.as_str(),
+            "openai" | "anthropic" | "openrouter"
+        );
+        
+        // For providers without proper tool support, skip tool calling entirely
+        let enable_tools = supports_tool_role;
+        
         let mut conversation: Vec<serde_json::Value> = vec![
             json!({
                 "role": "system",
@@ -56,20 +65,61 @@ impl AgentExecutor {
                 break;
             }
 
-            // Get tool definitions
-            let tool_defs = self.tool_registry.get_definitions().await;
-            
-            // Convert tool definitions to JSON for LLM
-            let tools_json: Vec<serde_json::Value> = tool_defs
-                .iter()
-                .map(|td| serde_json::to_value(td).unwrap_or(json!({})))
-                .collect();
+            let response = if enable_tools {
+                // Get tool definitions
+                let tool_defs = self.tool_registry.get_definitions().await;
+                
+                // Convert tool definitions to JSON for LLM
+                let tools_json: Vec<serde_json::Value> = tool_defs
+                    .iter()
+                    .map(|td| serde_json::to_value(td).unwrap_or(json!({})))
+                    .collect();
 
-            // Call LLM with tools and conversation history
-            let response = self
-                .llm_client
-                .chat_with_tools_and_history(message, tools_json, &conversation)
-                .await?;
+                // Call LLM with tools and conversation history
+                self.llm_client
+                    .chat_with_tools_and_history(message, tools_json, &conversation)
+                    .await?
+            } else {
+                // Call LLM without tools for providers that don't support them properly
+                let client = reqwest::Client::new();
+                let url = self.llm_client.get_chat_endpoint();
+                let model = self.llm_client.normalize_model_name(&self.llm_client.model);
+
+                let payload = json!({
+                    "model": model,
+                    "messages": conversation,
+                    "stream": false,
+                });
+
+                let response = client
+                    .post(&url)
+                    .header("Content-Type", "application/json")
+                    .json(&payload)
+                    .send()
+                    .await
+                    .map_err(|e| format!("Request failed: {}", e))?;
+
+                if !response.status().is_success() {
+                    let status = response.status();
+                    let text = response.text().await.unwrap_or_default();
+                    return Err(format!("API error {}: {}", status, text).into());
+                }
+
+                let data: serde_json::Value = response
+                    .json()
+                    .await
+                    .map_err(|e| format!("Failed to parse response: {}", e))?;
+
+                let content = data["choices"][0]["message"]["content"]
+                    .as_str()
+                    .unwrap_or("")
+                    .to_string();
+
+                crate::llm::LlmResponse {
+                    content,
+                    tool_calls: Vec::new(),
+                }
+            };
 
             // Build assistant message with tool calls if any
             let mut assistant_msg = json!({
@@ -109,6 +159,7 @@ impl AgentExecutor {
             info!("LLM requested tool calls: {:?} (iteration: {})", tool_names, iteration);
 
             // Execute tools and collect results
+            let mut tool_results = Vec::new();
             for tool_call in &response.tool_calls {
                 debug!("Executing tool: {}", tool_call.name);
 
@@ -126,11 +177,28 @@ impl AgentExecutor {
                     }
                 }
 
-                // Add tool result to conversation (OpenAI format)
+                if supports_tool_role {
+                    // Add tool result to conversation (OpenAI format)
+                    conversation.push(json!({
+                        "role": "tool",
+                        "tool_call_id": tool_call.id,
+                        "content": result.for_llm
+                    }));
+                } else {
+                    // Collect results for user message
+                    tool_results.push(format!(
+                        "Tool '{}' result: {}",
+                        tool_call.name,
+                        result.for_llm
+                    ));
+                }
+            }
+            
+            // For providers without tool role support, add results as user message
+            if !supports_tool_role && !tool_results.is_empty() {
                 conversation.push(json!({
-                    "role": "tool",
-                    "tool_call_id": tool_call.id,
-                    "content": result.for_llm
+                    "role": "user",
+                    "content": tool_results.join("\n\n")
                 }));
             }
         }
